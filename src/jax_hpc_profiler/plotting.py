@@ -11,11 +11,12 @@ from .utils import _query_volume_type, clean_up_csv, plot_with_pdims_strategy
 np.seterr(divide='ignore')
 
 
-def _format_volume_title(vol: int) -> str:
+def _format_volume_title(vol: int, use_cube_notation: bool = True) -> str:
     """Format a volume as N³ if it is a perfect cube, otherwise as the raw number."""
-    cbrt = round(vol ** (1.0 / 3.0))
-    if cbrt**3 == vol:
-        return f'{cbrt}\u00b3'
+    if use_cube_notation:
+        cbrt = round(vol ** (1.0 / 3.0))
+        if cbrt**3 == vol:
+            return f'{cbrt}\u00b3'
     return f'{vol:,}'
 
 
@@ -171,6 +172,7 @@ def plot_scaling(
     ideal_line: bool = False,
     xscale: str = 'linear',
     use_cube_notation: bool = True,
+    use_cubic_notation_title: bool = True,
 ):
     """
     General scaling plot function.
@@ -216,6 +218,8 @@ def plot_scaling(
         X-axis scale: 'linear', 'symlog', 'log2', or 'log10', by default 'linear'.
     use_cube_notation : bool, optional
         Whether to use N^3 notation for cubic volumes, by default True.
+    use_cubic_notation_title : bool, optional
+        Whether to use N^3 notation for cubic volumes in the subplot title, by default True.
     """
     num_subplots = len(scaling_labels)
     if num_subplots == 0:
@@ -307,7 +311,9 @@ def plot_scaling(
 
         if len(x_values) != 0:
             plotting_memory = 'time' not in plot_columns[0].lower()
-            vol_label = _format_volume_title(int(label_value))
+            vol_label = _format_volume_title(
+                int(label_value), use_cube_notation=use_cubic_notation_title
+            )
             figure_title = f'{title} {vol_label}' if title is not None else None
 
             # Build volume tick labels when x-axis is a volume column
@@ -364,6 +370,7 @@ def plot_by_data_size(
     ideal_line: bool = False,
     xscale: str = 'linear',
     use_cube_notation: bool = True,
+    use_cubic_notation_title: bool = True,
 ):
     """
     Plot with subplots per data size query, x-axis = GPUs.
@@ -415,6 +422,7 @@ def plot_by_data_size(
         ideal_line,
         xscale,
         use_cube_notation,
+        use_cubic_notation_title,
     )
 
 
@@ -438,6 +446,7 @@ def plot_by_gpus(
     ideal_line: bool = False,
     xscale: str = 'linear',
     use_cube_notation: bool = True,
+    use_cubic_notation_title: bool = False,
 ):
     """
     Plot with subplots per GPU count, x-axis = data size (volume).
@@ -489,4 +498,5 @@ def plot_by_gpus(
         ideal_line,
         xscale,
         use_cube_notation,
+        use_cubic_notation_title,
     )

@@ -36,6 +36,13 @@ def main():
 
         use_cube_notation = not args.disable_cube_notation
 
+        def _resolve_cubic_notation_title(default: bool) -> bool:
+            if args.enable_cubic_notation_title:
+                return True
+            if args.disable_cubic_notation_title:
+                return False
+            return default
+
         if scaling in ('data', 'd'):
             plot_by_data_size(
                 args.csv_files,
@@ -57,6 +64,7 @@ def main():
                 args.ideal_line,
                 args.xscale,
                 use_cube_notation=use_cube_notation,
+                use_cubic_notation_title=_resolve_cubic_notation_title(True),
             )
         elif scaling in ('gpus', 'g'):
             plot_by_gpus(
@@ -79,6 +87,7 @@ def main():
                 args.ideal_line,
                 args.xscale,
                 use_cube_notation=use_cube_notation,
+                use_cubic_notation_title=_resolve_cubic_notation_title(False),
             )
 
 

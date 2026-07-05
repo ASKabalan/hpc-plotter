@@ -171,6 +171,22 @@ def create_argparser():
         help='Disable N^3 notation for cubic volumes (e.g. show 128x128x128 instead of 128^3)',
     )
 
+    # Cube notation in the subplot title (default: enabled for data-size scaling,
+    # disabled for GPU scaling, since GPU counts that happen to be perfect cubes
+    # should not be rendered as e.g. 8^3)
+    plot_parser.add_argument(
+        '--disable_cubic_notation_title',
+        action='store_true',
+        default=None,
+        help='Force-disable N^3 notation in the subplot title for cubic volumes',
+    )
+    plot_parser.add_argument(
+        '--enable_cubic_notation_title',
+        action='store_true',
+        default=None,
+        help='Force-enable N^3 notation in the subplot title for cubic volumes',
+    )
+
     # Label customization argument
     plot_parser.add_argument(
         '-l',
