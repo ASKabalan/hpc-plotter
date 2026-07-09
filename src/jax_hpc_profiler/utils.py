@@ -387,6 +387,7 @@ def clean_up_csv(
     pdims_strategy: list[str] = ['plot_fastest'],
     backends: list[str] | None = None,
     memory_units: str = 'KB',
+    time_units: str = 'ms',
 ) -> tuple[dict[str, pd.DataFrame], list[int], list[int]]:
     """
     Clean up and aggregate data from CSV files.
@@ -411,6 +412,9 @@ def clean_up_csv(
         List of backends to filter by, by default None.
     memory_units : str, optional
         Memory unit for conversion, by default 'KB'.
+    time_units : str, optional
+        Time unit for the timing columns, by default 'ms' (as stored in the CSV). Pass 's'
+        (or 'sec'/'seconds') to convert every time column from milliseconds to seconds.
 
     Returns
     -------
@@ -457,6 +461,11 @@ def clean_up_csv(
         df['argument_size'] = df['argument_size'] / factor
         df['output_size'] = df['output_size'] / factor
         df['temp_size'] = df['temp_size'] / factor
+
+        # convert the timing columns to the requested time_units (the CSV stores milliseconds)
+        time_factor = 1000.0 if time_units in ('s', 'sec', 'secs', 'second', 'seconds') else 1.0
+        for _tcol in ('jit_time', 'min_time', 'max_time', 'mean_time', 'std_div', 'last_time'):
+            df[_tcol] = df[_tcol] / time_factor
         # in case of the same test is run multiple times, keep the last one
         df = df.drop_duplicates(
             subset=[

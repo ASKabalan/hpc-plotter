@@ -1,6 +1,7 @@
 from itertools import product
 
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
@@ -11,11 +12,12 @@ from .utils import _query_volume_type, clean_up_csv, plot_with_pdims_strategy
 np.seterr(divide='ignore')
 
 
-def _format_volume_title(vol: int) -> str:
+def _format_volume_title(vol: int, use_cube_notation: bool = True) -> str:
     """Format a volume as N³ if it is a perfect cube, otherwise as the raw number."""
-    cbrt = round(vol ** (1.0 / 3.0))
-    if cbrt**3 == vol:
-        return f'{cbrt}\u00b3'
+    if use_cube_notation:
+        cbrt = round(vol ** (1.0 / 3.0))
+        if cbrt**3 == vol:
+            return f'{cbrt}\u00b3'
     return f'{vol:,}'
 
 
@@ -84,6 +86,7 @@ def configure_axes(
     xscale: str = 'linear',
     x_tick_labels: dict | None = None,
     rotate_x_ticks: bool = False,
+    time_units: str = 'ms',
 ):
     """
     Configure the axes for the plot.
@@ -111,7 +114,10 @@ def configure_axes(
     rotate_x_ticks : bool
         Whether to rotate x-axis tick labels by 45 degrees.
     """
-    ylabel = 'Time (milliseconds)' if not plotting_memory else f'Memory ({memory_units})'
+    time_label = (
+        'seconds' if time_units in ('s', 'sec', 'secs', 'second', 'seconds') else 'milliseconds'
+    )
+    ylabel = f'Time ({time_label})' if not plotting_memory else f'Memory ({memory_units})'
 
     ax.set_xlim([min(x_values), max(x_values)])
     y_min, y_max = min(y_values) * 0.6, max(y_values) * 1.1
@@ -119,10 +125,19 @@ def configure_axes(
     ax.set_ylim([y_min, y_max])
     if not plotting_memory:
         ax.set_yscale('symlog')
-        time_ticks = [
-            10**t for t in range(int(np.floor(np.log10(y_min))), 1 + int(np.ceil(np.log10(y_max))))
-        ]
-        ax.set_yticks(time_ticks)
+        # Dense, labelled log ticks: 1/2/5 per decade as majors, the rest (3,4,6-9) as minors,
+        # so the symlog time axis carries far more than the bare decade ticks it had before.
+        ax.yaxis.set_major_locator(mticker.LogLocator(base=10.0, subs=(1.0, 2.0, 5.0)))
+        ax.yaxis.set_minor_locator(
+            mticker.LogLocator(base=10.0, subs=(3.0, 4.0, 6.0, 7.0, 8.0, 9.0))
+        )
+        major_fmt = mticker.ScalarFormatter()
+        major_fmt.set_scientific(False)
+        ax.yaxis.set_major_formatter(major_fmt)
+    else:
+        # Linear memory axis: denser majors + minor ticks between them.
+        ax.yaxis.set_major_locator(mticker.MaxNLocator(nbins=10))
+        ax.yaxis.set_minor_locator(mticker.AutoMinorLocator(2))
 
     # Apply x-axis scale
     if xscale == 'log2':
@@ -146,6 +161,10 @@ def configure_axes(
     ax.set_ylabel(ylabel)
     for x_value in x_values:
         ax.axvline(x=x_value, color='gray', linestyle='--', alpha=0.5)
+    # Horizontal (y) grid — a touch stronger on the majors, fainter on the minors.
+    ax.grid(True, axis='y', which='major', color='gray', linestyle=':', alpha=0.5)
+    ax.grid(True, axis='y', which='minor', color='gray', linestyle=':', alpha=0.25)
+    ax.set_axisbelow(True)
     ax.legend(
         loc='best',
     )
@@ -171,6 +190,8 @@ def plot_scaling(
     ideal_line: bool = False,
     xscale: str = 'linear',
     use_cube_notation: bool = True,
+    use_cubic_notation_title: bool = True,
+    time_units: str = 'ms',
 ):
     """
     General scaling plot function.
@@ -216,6 +237,8 @@ def plot_scaling(
         X-axis scale: 'linear', 'symlog', 'log2', or 'log10', by default 'linear'.
     use_cube_notation : bool, optional
         Whether to use N^3 notation for cubic volumes, by default True.
+    use_cubic_notation_title : bool, optional
+        Whether to use N^3 notation for cubic volumes in the subplot title, by default True.
     """
     num_subplots = len(scaling_labels)
     if num_subplots == 0:
@@ -307,7 +330,9 @@ def plot_scaling(
 
         if len(x_values) != 0:
             plotting_memory = 'time' not in plot_columns[0].lower()
-            vol_label = _format_volume_title(int(label_value))
+            vol_label = _format_volume_title(
+                int(label_value), use_cube_notation=use_cubic_notation_title
+            )
             figure_title = f'{title} {vol_label}' if title is not None else None
 
             # Build volume tick labels when x-axis is a volume column
@@ -330,6 +355,7 @@ def plot_scaling(
                 xscale,
                 tick_labels,
                 rotate,
+                time_units=time_units,
             )
 
     for i in range(num_subplots, num_rows * num_cols):
@@ -364,6 +390,8 @@ def plot_by_data_size(
     ideal_line: bool = False,
     xscale: str = 'linear',
     use_cube_notation: bool = True,
+    use_cubic_notation_title: bool = True,
+    time_units: str = 'ms',
 ):
     """
     Plot with subplots per data size query, x-axis = GPUs.
@@ -382,6 +410,7 @@ def plot_by_data_size(
         pdims_strategy,
         backends,
         memory_units,
+        time_units,
     )
     if len(dataframes) == 0:
         print('No dataframes found for the given arguments. Exiting...')
@@ -415,6 +444,8 @@ def plot_by_data_size(
         ideal_line,
         xscale,
         use_cube_notation,
+        use_cubic_notation_title,
+        time_units=time_units,
     )
 
 
@@ -438,6 +469,8 @@ def plot_by_gpus(
     ideal_line: bool = False,
     xscale: str = 'linear',
     use_cube_notation: bool = True,
+    use_cubic_notation_title: bool = False,
+    time_units: str = 'ms',
 ):
     """
     Plot with subplots per GPU count, x-axis = data size (volume).
@@ -456,6 +489,7 @@ def plot_by_gpus(
         pdims_strategy,
         backends,
         memory_units,
+        time_units,
     )
     if len(dataframes) == 0:
         print('No dataframes found for the given arguments. Exiting...')
@@ -489,4 +523,6 @@ def plot_by_gpus(
         ideal_line,
         xscale,
         use_cube_notation,
+        use_cubic_notation_title,
+        time_units=time_units,
     )
